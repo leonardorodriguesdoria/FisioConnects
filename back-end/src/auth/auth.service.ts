@@ -28,6 +28,7 @@ import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { OTPService } from 'src/otp/otp.serivce';
 import { OtpTypes } from 'src/otp/types/otpType';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +39,7 @@ export class AuthService {
     private readonly physiotherapistRepository: Repository<Physiotherapist>,
     private readonly jwtService: JwtService,
     private readonly otpService: OTPService,
+    private readonly emailService: EmailService,
   ) {}
 
   createToken(user: Physiotherapist) {
@@ -72,67 +74,46 @@ export class AuthService {
   }
 
   //Cadastro Fisioterapeuta
-  async registerProfessional(
-    body: IPhysiotherapist,
-  ): Promise<{ physiotherapist: Physiotherapist; otp: string }> {
-    try {
-      const {
-        name,
-        email,
-        phone,
-        description,
-        password,
-        crefito,
-        specialties,
-      } = body;
+  async registerProfessional(body: IPhysiotherapist): Promise<void> {
+    const { name, email, phone, description, password, crefito, specialties } =
+      body;
 
-      const professionalAlreadyExists =
-        await this.physiotherapistRepository.findOne({
-          where: { email: email },
-        });
-      if (professionalAlreadyExists) {
-        throw new ConflictException('Já existe um usuário com esse e-mail!!!');
-      }
-
-      const hashedPassword = await hashPassword(password);
-
-      const newProfessional = this.physiotherapistRepository.create({
-        name: name,
-        email: email,
-        phone: phone,
-        description: description,
-        password: hashedPassword,
-        crefito: crefito,
-        specialties: specialties,
+    const physiotherapistAlreadyExists =
+      await this.physiotherapistRepository.findOne({
+        where: { email: email },
       });
-
-      await this.physiotherapistRepository.save(newProfessional);
-      const otp = await this.otpService.generateOTP(
-        newProfessional,
-        OtpTypes.OTP,
-      );
-      return {
-        physiotherapist: newProfessional,
-        otp: otp,
-      };
-    } catch (error) {
-      if (
-        error instanceof ConflictException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-
-      if (error instanceof QueryFailedError) {
-        throw new InternalServerErrorException(
-          'Erro ao processar o banco de dados.',
-        );
-      }
-
-      throw new InternalServerErrorException(
-        'Erro interno no sistema. Por favor tente mais tarde.',
-      );
+    if (physiotherapistAlreadyExists) {
+      throw new ConflictException('Já existe um usuário com esse e-mail!!!');
     }
+
+    const hashedPassword = await hashPassword(password);
+
+    const newPhysiotherapist = this.physiotherapistRepository.create({
+      name: name,
+      email: email,
+      phone: phone,
+      description: description,
+      password: hashedPassword,
+      crefito: crefito,
+      specialties: specialties,
+    });
+
+    await this.physiotherapistRepository.save(newPhysiotherapist);
+
+    return this.emailVerification(newPhysiotherapist, OtpTypes.OTP);
+  }
+
+  async emailVerification(physiotherapist: Physiotherapist, otpType: OtpTypes) {
+    const otp = await this.otpService.generateOTP(physiotherapist, otpType);
+
+    const emailDto = {
+      recipients: [physiotherapist.email],
+      subject: 'Código de Verificação',
+      html: `Seu código de verificação: <strong>${otp}</strong>.
+      <br />Utilize esse código para validar sua conta`,
+    };
+
+    return await this.emailService.sendEmail(emailDto);
   }
 
   // Login Fisioterapeuta

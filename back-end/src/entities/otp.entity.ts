@@ -1,8 +1,16 @@
 /* eslint-disable prettier/prettier */
 import { Physiotherapist } from 'src/entities/physiotherapist.entity';
-import { Column, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Entity,
+  CreateDateColumn,
+} from 'typeorm';
 import { OtpTypes } from '../otp/types/otpType';
 
+@Entity()
 export class OTP {
   @PrimaryGeneratedColumn()
   id: number;
@@ -20,6 +28,6 @@ export class OTP {
   @Column()
   expiresAt: Date;
 
-  @Column()
+  @CreateDateColumn()
   createdAt: Date;
 }

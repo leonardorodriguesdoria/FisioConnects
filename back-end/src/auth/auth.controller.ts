@@ -20,7 +20,6 @@ import { LoginPhysiotherapistDto } from './dto/login-physiotherapist.dto';
 import { UpdatePhysiotherapistDto } from './dto/update-physiotherapist.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -38,10 +37,11 @@ export class AuthController {
 
   @Post('register')
   async create(@Body() createPhysiotherapistDto: CreatePhysiotherapistDto) {
-    const physioterapist = await this.authService.registerProfessional(
-      createPhysiotherapistDto,
-    );
-    return { message: 'Profissional cadastro com sucesso!!!', physioterapist };
+    await this.authService.registerProfessional(createPhysiotherapistDto);
+    return {
+      message:
+        'Profissional cadastro com sucesso. Um código de verificação foi enviado para seu e-mail!',
+    };
   }
 
   @Post('login')

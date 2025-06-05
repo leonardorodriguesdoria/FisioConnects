@@ -9,6 +9,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { OTPModule } from 'src/otp/otp.module';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { OTPModule } from 'src/otp/otp.module';
     }),
     TypeOrmModule.forFeature([Physiotherapist]),
     OTPModule,
+    EmailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

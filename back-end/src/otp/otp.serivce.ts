@@ -5,7 +5,6 @@ import { OTP } from '../entities/otp.entity';
 import { MoreThan, Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { hashOTP } from 'src/utils/hashPassword';
 import { OtpTypes } from './types/otpType';
 import { Physiotherapist } from 'src/entities/physiotherapist.entity';
 import { JwtService } from '@nestjs/jwt';
@@ -24,44 +23,21 @@ export class OTPService {
     physiotherapist: Physiotherapist,
     type: OtpTypes,
   ): Promise<string> {
-    if (type === OtpTypes.OTP) {
-      const otp = crypto.randomInt(10000, 99999).toString();
-      const hashedOTP = await hashOTP(otp);
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const hashedOTP = await bcrypt.hash(otp, 10);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
 
-      const existingOTP = await this.otpRepository.findOne({
-        where: { physiotherapist: { id: physiotherapist.id }, type },
-      });
+    const otpEntity = this.otpRepository.create({
+      physiotherapist,
+      token: hashedOTP,
+      type,
+      expiresAt,
+    });
 
-      if (existingOTP) {
-        //update exisiting token
-        existingOTP.token = hashedOTP;
-        existingOTP.expiresAt = expiresAt;
-        await this.otpRepository.save(existingOTP);
-      } else {
-        //create otp entity
-        const otpEntity = this.otpRepository.create({
-          physiotherapist,
-          token: hashedOTP,
-          type,
-          expiresAt,
-        });
+    await this.otpRepository.save(otpEntity);
 
-        await this.otpRepository.save(otpEntity);
-      }
-      return otp;
-    } else if (type === OtpTypes.RESET_LINK) {
-      const resetToken = this.jwtService.sign(
-        { id: physiotherapist.id, email: physiotherapist.email },
-        {
-          secret: this.configService.get<string>('JWT_RESET_SECRET'),
-          expiresIn: '15m',
-        },
-      );
-
-      return resetToken;
-    }
+    return otp;
   }
 
   async validateOTP(userId: number, token: string): Promise<boolean> {
